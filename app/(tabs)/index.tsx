@@ -1,12 +1,13 @@
 
+import { useShakeDetector } from '@/hooks/useShakeDetector';
 import { useUserConfiguration } from '@/hooks/useUserConfiguration';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-
 export default function HomeScreen() {
   const{isConfigured, isLoading} = useUserConfiguration();
+  const { isActive, triggerPanicAlert, debugInfo } = useShakeDetector();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [address, setAddress] = useState('');
   const [loadingLocation, setLoadingLocation] = useState(false);
@@ -113,6 +114,55 @@ const getCurrentLocation = async() => {
           </Text>
         </View>
       ) : null}
+
+      {/* Shake Detector Status */}
+      <View style={styles.shakeDetectorStatus}>
+        <Text style={styles.shakeDetectorTitle}>
+          🚨 Botón de Pánico: {isActive ? '✅ ACTIVO' : '❌ INACTIVO'}
+        </Text>
+        <Text style={styles.shakeDetectorText}>
+          {isActive ? 'Agita tu teléfono para activar emergencia' : 'Completa tu configuración para activar'}
+        </Text>
+        
+        {/* Debug Information for Testing */}
+        {isActive && (
+          <View style={styles.debugContainer}>
+            <Text style={styles.debugText}>🔧 Debug: {debugInfo}</Text>
+          </View>
+        )}
+        
+        {/* Botones de Testing Mejorados */}
+        {isActive && (
+          <View style={styles.testButtonContainer}>
+            <TouchableOpacity 
+              style={[styles.testPanicButton, { backgroundColor: '#FF6B6B' }]} 
+              onPress={triggerPanicAlert}
+            >
+              <Text style={styles.testPanicButtonText}>🆘 Test Manual</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.testPanicButton, { backgroundColor: '#4ECDC4', marginLeft: 10 }]} 
+              onPress={() => {
+                alert(
+                  '🔧 INSTRUCCIONES DE TESTING:\n\n' +
+                  '📱 CÓMO PROBAR EL ACELERÓMETRO:\n' +
+                  '1. Sostén tu teléfono firmemente\n' +
+                  '2. Agítalo rápidamente de lado a lado\n' +
+                  '3. Movimientos deben ser bruscos y rápidos\n\n' +
+                  '⚙️ CONFIGURACIÓN ACTUAL:\n' +
+                  '• Umbral: 12 (sensibilidad alta)\n' +
+                  '• Cooldown: 0.8 segundos\n' +
+                  '• Si Expo Go interfiere, usa el test manual\n\n' +
+                  '💡 TIP: En un build de producción funcionará mejor'
+                );
+              }}
+            >
+              <Text style={styles.testPanicButtonText}>ℹ️ Ayuda</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
    
     </ScrollView>
   );
@@ -226,5 +276,59 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     fontFamily: 'monospace',
+  },
+  shakeDetectorStatus: {
+    backgroundColor: '#fff3cd',
+    padding: 20,
+    borderRadius: 12,
+    marginTop: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#ff6b6b',
+    width: '100%',
+  },
+  shakeDetectorTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+    textAlign: 'center',
+  },
+  shakeDetectorText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 15,
+  },
+  testPanicButton: {
+    backgroundColor: '#ff6b6b',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    marginTop: 10,
+    flex: 1,
+  },
+  testButtonContainer: {
+    flexDirection: 'row',
+    marginTop: 10,
+    width: '100%',
+  },
+  debugContainer: {
+    backgroundColor: '#f8f9fa',
+    padding: 8,
+    borderRadius: 4,
+    marginTop: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#6c757d',
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#6c757d',
+    fontFamily: 'monospace',
+  },
+  testPanicButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
