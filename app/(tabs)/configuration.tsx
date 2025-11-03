@@ -12,6 +12,7 @@ import {
 
 export default function ConfigurationScreen() {
     const [configured, setConfigured] = useState('');
+  const [myEmail, setMyEmail] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
 
@@ -23,10 +24,12 @@ export default function ConfigurationScreen() {
   const loadSavedData = async () => {
     try {
       const alreadyConfigured = await AsyncStorage.getItem('isConfigured');
-      const savedEmail = await AsyncStorage.getItem('userEmail');
-      const savedPhone = await AsyncStorage.getItem('userPhone');
+      const savedMyEmail = await AsyncStorage.getItem('userEmail');
+      const savedEmail = await AsyncStorage.getItem('contactEmail');
+      const savedPhone = await AsyncStorage.getItem('contactPhone');
 
       if(alreadyConfigured) setConfigured(alreadyConfigured);
+      if (savedMyEmail) setMyEmail(savedMyEmail);
       if (savedEmail) setEmail(savedEmail);
       if (savedPhone) setPhoneNumber(savedPhone);
     } catch (error) {
@@ -35,42 +38,44 @@ export default function ConfigurationScreen() {
   };
 
   const handleSave = async () => {
-    if (email || phoneNumber) {
+    if (myEmail && email && phoneNumber) {
       try {
         // Save data in AsyncStorage
         await AsyncStorage.setItem('isConfigured', 'true');
-        if (email) await AsyncStorage.setItem('userEmail', email);
-        if (phoneNumber) await AsyncStorage.setItem('userPhone', phoneNumber);
+        if (myEmail) await AsyncStorage.setItem('userEmail', myEmail);
+        if (email) await AsyncStorage.setItem('contactEmail', email);
+        if (phoneNumber) await AsyncStorage.setItem('contactPhone', phoneNumber);
 
-        Alert.alert('Changes successfully saved!', `Email: ${email}\nPhone: ${phoneNumber}\n\nData saved to device`);
+        Alert.alert('Changes successfully saved!', `Data saved to device`);
       } catch (error) {
         Alert.alert('Error', 'Failed to save data');
         console.log('Error saving data:', error);
       }
     } else {
-      Alert.alert('Error', 'Please complete at least one field');
+      Alert.alert('Error', 'Please complete all fields before saving.');
     }
   };
 
   const clearData = async () => {
     Alert.alert(
-      'Limpiar datos',
-      '¿Estás segura de que quieres borrar toda la información guardada?',
+      'Clear Data',
+      'Are you sure you want to delete all saved information?',
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Borrar', 
+          text: 'Delete', 
           style: 'destructive',
           onPress: async () => {
             try {
               await AsyncStorage.removeItem('userEmail');
-              await AsyncStorage.removeItem('userPhone');
+              await AsyncStorage.removeItem('contactEmail');
+              await AsyncStorage.removeItem('contactPhone');
               await AsyncStorage.removeItem('isConfigured');
               setEmail('');
               setPhoneNumber('');
-              Alert.alert('Completado', 'Todos los datos han sido borrados');
+              Alert.alert('Completed', 'All data has been deleted');
             } catch (error) {
-              Alert.alert('Error', 'No se pudieron borrar los datos');
+              Alert.alert('Error', 'Could not delete the data');
             }
           }
         }
@@ -88,10 +93,24 @@ export default function ConfigurationScreen() {
         Update your personal information
       </Text>
 
-      <View style={styles.formContainer}>
-        {/* Email field */}
+       <View style={styles.formContainer}>
+        {/* User's Email field */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>Your email</Text>
+          <TextInput
+            style={styles.input}
+            value={myEmail}
+            onChangeText={setMyEmail}
+            placeholder="example@email.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            placeholderTextColor="#999"
+          />
+        </View>
+
+        {/* Contact Email field */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Your contact's email</Text>
           <TextInput
             style={styles.input}
             value={email}
@@ -103,9 +122,9 @@ export default function ConfigurationScreen() {
           />
         </View>
 
-        {/* Phone Number field */}
+        {/* Contact Phone Number field */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Phone Number</Text>
+          <Text style={styles.label}>Your contact's cellphone number</Text>
           <TextInput
             style={styles.input}
             value={phoneNumber}
@@ -118,12 +137,12 @@ export default function ConfigurationScreen() {
 
         {/* Save Button */}
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Guardar</Text>
+          <Text style={styles.saveButtonText}>Save</Text>
         </TouchableOpacity>
 
         {/* Clear Data Button */}
         <TouchableOpacity style={styles.clearButton} onPress={clearData}>
-          <Text style={styles.clearButtonText}>Limpiar datos guardados</Text>
+          <Text style={styles.clearButtonText}>Clear saved data</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

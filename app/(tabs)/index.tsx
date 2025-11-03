@@ -7,7 +7,7 @@ import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 
 export default function HomeScreen() {
   const{isConfigured, isLoading} = useUserConfiguration();
-  const { isActive, triggerPanicAlert, debugInfo } = useShakeDetector();
+  const { isActive, triggerPanicAlert } = useShakeDetector();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [address, setAddress] = useState('');
   const [loadingLocation, setLoadingLocation] = useState(false);
@@ -39,7 +39,9 @@ const getCurrentLocation = async() => {
     });
 
     if (reverseGeocode[0]) {
-      const addr = `${reverseGeocode[0].street} ${reverseGeocode[0].streetNumber}, ${reverseGeocode[0].city}, ${reverseGeocode[0].region}, ${reverseGeocode[0].postalCode}`;
+      //I commented this line to avoid doxxing myself during the demo
+      //const addr = `${reverseGeocode[0].street} ${reverseGeocode[0].streetNumber}, ${reverseGeocode[0].city}, ${reverseGeocode[0].region}, ${reverseGeocode[0].postalCode}`;
+      const addr = `${reverseGeocode[0].city}, ${reverseGeocode[0].region}, ${reverseGeocode[0].postalCode}`;
 
       
       setAddress(addr);
@@ -115,52 +117,25 @@ const getCurrentLocation = async() => {
         </View>
       ) : null}
 
-      {/* Shake Detector Status */}
-      <View style={styles.shakeDetectorStatus}>
-        <Text style={styles.shakeDetectorTitle}>
-          🚨 Botón de Pánico: {isActive ? '✅ ACTIVO' : '❌ INACTIVO'}
+      {/* Emergency Panic Button */}
+      <View style={styles.panicButtonContainer}>
+        <Text style={styles.panicButtonTitle}>
+          🚨 Emergency Panic Button
         </Text>
-        <Text style={styles.shakeDetectorText}>
-          {isActive ? 'Agita tu teléfono para activar emergencia' : 'Completa tu configuración para activar'}
+        <Text style={styles.panicButtonSubtitle}>
+          {isActive ? 'Press the button below in case of emergency' : 'Complete your configuration to activate'}
         </Text>
         
-        {/* Debug Information for Testing */}
         {isActive && (
-          <View style={styles.debugContainer}>
-            <Text style={styles.debugText}>🔧 Debug: {debugInfo}</Text>
-          </View>
-        )}
-        
-        {/* Botones de Testing Mejorados */}
-        {isActive && (
-          <View style={styles.testButtonContainer}>
-            <TouchableOpacity 
-              style={[styles.testPanicButton, { backgroundColor: '#FF6B6B' }]} 
-              onPress={triggerPanicAlert}
-            >
-              <Text style={styles.testPanicButtonText}>🆘 Test Manual</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.testPanicButton, { backgroundColor: '#4ECDC4', marginLeft: 10 }]} 
-              onPress={() => {
-                alert(
-                  '🔧 INSTRUCCIONES DE TESTING:\n\n' +
-                  '📱 CÓMO PROBAR EL ACELERÓMETRO:\n' +
-                  '1. Sostén tu teléfono firmemente\n' +
-                  '2. Agítalo rápidamente de lado a lado\n' +
-                  '3. Movimientos deben ser bruscos y rápidos\n\n' +
-                  '⚙️ CONFIGURACIÓN ACTUAL:\n' +
-                  '• Umbral: 12 (sensibilidad alta)\n' +
-                  '• Cooldown: 0.8 segundos\n' +
-                  '• Si Expo Go interfiere, usa el test manual\n\n' +
-                  '💡 TIP: En un build de producción funcionará mejor'
-                );
-              }}
-            >
-              <Text style={styles.testPanicButtonText}>ℹ️ Ayuda</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={styles.emergencyPanicButton}
+            onPress={triggerPanicAlert}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.emergencyPanicButtonText}>🆘</Text>
+            <Text style={styles.emergencyPanicButtonLabel}>EMERGENCY</Text>
+            <Text style={styles.emergencyPanicButtonSubtext}>Press and Hold</Text>
+          </TouchableOpacity>
         )}
       </View>
    
@@ -299,6 +274,73 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 15,
+  },
+  panicButtonContainer: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    marginTop: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#ff0000',
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  panicButtonTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: '#d32f2f',
+    textAlign: 'center',
+  },
+  panicButtonSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  emergencyPanicButton: {
+    backgroundColor: '#ff0000',
+    borderRadius: 100,
+    width: 200,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#ff0000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 6,
+    borderColor: '#ffffff',
+  },
+  emergencyPanicButtonText: {
+    fontSize: 50,
+    color: 'white',
+    marginBottom: 5,
+  },
+  emergencyPanicButtonLabel: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: 'white',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  emergencyPanicButtonSubtext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
   },
   testPanicButton: {
     backgroundColor: '#ff6b6b',
