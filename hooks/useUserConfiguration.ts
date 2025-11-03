@@ -1,24 +1,36 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export function useUserConfiguration() {
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    checkPreviousConfiguration();
-  }, []);
-
-  const checkPreviousConfiguration = async () => {
-    try{
-        const isConfigured = await AsyncStorage.getItem('isConfigured');
-        setIsConfigured(!!isConfigured);
+  const checkPreviousConfiguration = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const configuredValue = await AsyncStorage.getItem('isConfigured');
+      setIsConfigured(!!configuredValue);
     } catch (error) {
       console.error("Error checking user configuration:", error);
+      setIsConfigured(false);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  return { isConfigured, isLoading, checkPreviousConfiguration };
+  useEffect(() => {
+    checkPreviousConfiguration();
+  }, [checkPreviousConfiguration]);
+
+  // Function to refresh configuration manually
+  const refreshConfiguration = useCallback(() => {
+    checkPreviousConfiguration();
+  }, [checkPreviousConfiguration]);
+
+  return { 
+    isConfigured, 
+    isLoading, 
+    checkPreviousConfiguration, 
+    refreshConfiguration 
+  };
 }

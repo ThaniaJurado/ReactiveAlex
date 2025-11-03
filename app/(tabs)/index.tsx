@@ -1,13 +1,14 @@
 
-import { useShakeDetector } from '@/hooks/useShakeDetector';
+import { useEmergencyMessaging } from '@/hooks/useEmergencyMessaging';
 import { useUserConfiguration } from '@/hooks/useUserConfiguration';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
-  const{isConfigured, isLoading} = useUserConfiguration();
-  const { isActive, triggerPanicAlert } = useShakeDetector();
+  const { isConfigured, isLoading, refreshConfiguration } = useUserConfiguration();
+  const { isMessagingActive, triggerEmergencyAlert } = useEmergencyMessaging();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [address, setAddress] = useState('');
   const [loadingLocation, setLoadingLocation] = useState(false);
@@ -18,6 +19,13 @@ export default function HomeScreen() {
       getCurrentLocation();
     }
   }, [isConfigured, isLoading]); // It will be executed when isConfigured or isLoading changes
+
+  // Refresh configuration whenever the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshConfiguration();
+    }, [refreshConfiguration])
+  );
 
 const getCurrentLocation = async() => {
   setLoadingLocation(true);
@@ -66,7 +74,7 @@ const getCurrentLocation = async() => {
   if(!isConfigured){
     return(
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>Please complete your configuration in the Configuration tab.</Text>
+        <Text style={styles.configurationMessage}>Please complete your configuration before continuing</Text>
       </View>
     )
   }
@@ -89,24 +97,16 @@ const getCurrentLocation = async() => {
         disabled={loadingLocation}
       >
         <Text style={styles.locationButtonText}>
-          {loadingLocation ? '🔄 Loading...' : '📍 Refresh Location'}
+          {loadingLocation ? 'Loading...' : 'Refresh Location'}
         </Text>
       </TouchableOpacity>
 
+   <View style={styles.locationInfo}>
       {address ? (
-        <View style={styles.locationInfo}>
+     <>
           <Text style={styles.addressTitle}>Your current location:</Text>
           <Text style={styles.addressText}>{address}</Text>
-        </View>
-      ) : loadingLocation ? (
-        <View style={styles.locationInfo}>
-          <Text style={styles.addressTitle}>Loading your location...</Text>
-          <Text style={styles.addressText}>Please wait while we get your current position</Text>
-        </View>
-      ) : null}
 
-      {location ? (
-        <View style={styles.coordinatesInfo}>
           <Text style={styles.coordinatesTitle}>Coordinates:</Text>
           <Text style={styles.coordinatesText}>
             Lat: {location.coords.latitude.toFixed(6)}
@@ -114,27 +114,33 @@ const getCurrentLocation = async() => {
           <Text style={styles.coordinatesText}>
             Lng: {location.coords.longitude.toFixed(6)}
           </Text>
-        </View>
+     </>
+      ) : loadingLocation ? (
+        <>
+          <Text style={styles.addressTitle}>Loading your location...</Text>
+          <Text style={styles.addressText}>Please wait while we get your current position</Text>
+        </>
       ) : null}
+    
+   </View>
+
 
       {/* Emergency Panic Button */}
       <View style={styles.panicButtonContainer}>
         <Text style={styles.panicButtonTitle}>
-          🚨 Emergency Panic Button
+          Emergency Panic Button
         </Text>
         <Text style={styles.panicButtonSubtitle}>
-          {isActive ? 'Press the button below in case of emergency' : 'Complete your configuration to activate'}
+          {isMessagingActive ? 'Press the button below in case of emergency' : 'Complete your configuration to activate'}
         </Text>
         
-        {isActive && (
+        {isMessagingActive && (
           <TouchableOpacity 
             style={styles.emergencyPanicButton}
-            onPress={triggerPanicAlert}
-            activeOpacity={0.8}
+            onPress={triggerEmergencyAlert}
+            activeOpacity={0.7}
           >
-            <Text style={styles.emergencyPanicButtonText}>🆘</Text>
             <Text style={styles.emergencyPanicButtonLabel}>EMERGENCY</Text>
-            <Text style={styles.emergencyPanicButtonSubtext}>Press and Hold</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -161,6 +167,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     color: '#333',
+  },
+  configurationMessage: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+    color: '#ffffff',
+    paddingHorizontal: 20,
+    lineHeight: 32,
   },
   subtitle: {
     fontSize: 18,
@@ -308,39 +323,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   emergencyPanicButton: {
-    backgroundColor: '#ff0000',
-    borderRadius: 100,
+    backgroundColor: '#e53e3e',
+    borderRadius: 20,
     width: 200,
     height: 200,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#ff0000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 6,
-    borderColor: '#ffffff',
-  },
-  emergencyPanicButtonText: {
-    fontSize: 50,
-    color: 'white',
-    marginBottom: 5,
   },
   emergencyPanicButtonLabel: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: 'bold',
     color: 'white',
-    letterSpacing: 1,
-    marginBottom: 2,
-  },
-  emergencyPanicButtonSubtext: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '500',
+    textAlign: 'center',
   },
   testPanicButton: {
     backgroundColor: '#ff6b6b',

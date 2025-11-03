@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -11,7 +12,7 @@ import {
 } from 'react-native';
 
 export default function ConfigurationScreen() {
-    const [configured, setConfigured] = useState('');
+  const [configured, setConfigured] = useState('');
   const [myEmail, setMyEmail] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -20,6 +21,13 @@ export default function ConfigurationScreen() {
   useEffect(() => {
     loadSavedData();
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadSavedData();
+    }, [])
+  );
 
   const loadSavedData = async () => {
     try {
@@ -86,7 +94,7 @@ export default function ConfigurationScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.title}>
-        ⚙️ Configuration
+        Configuration
       </Text>
       
       <Text style={styles.subtitle}>
