@@ -18,7 +18,7 @@ export default function HomeScreen() {
     if (isConfigured && !isLoading) {
       getCurrentLocation();
     }
-  }, [isConfigured, isLoading]); // It will be executed when isConfigured or isLoading changes
+  }, [isConfigured, isLoading]); // Execute when isConfigured or isLoading changes
 
   // Refresh configuration whenever the screen comes into focus
   useFocusEffect(
@@ -37,9 +37,9 @@ const getCurrentLocation = async() => {
       return;
     }
 
-    //After we got the permissions, the next step is to get the current location
+    // After getting permissions, get the current location
     let currentLocation = await Location.getCurrentPositionAsync({});
-    setLocation(currentLocation);//We use useState to update location data
+    setLocation(currentLocation); // Use useState to update location data
 
     let reverseGeocode = await Location.reverseGeocodeAsync({
       latitude: currentLocation.coords.latitude,
@@ -47,11 +47,8 @@ const getCurrentLocation = async() => {
     });
 
     if (reverseGeocode[0]) {
-      //I commented this line to avoid doxxing myself during the demo
-      //const addr = `${reverseGeocode[0].street} ${reverseGeocode[0].streetNumber}, ${reverseGeocode[0].city}, ${reverseGeocode[0].region}, ${reverseGeocode[0].postalCode}`;
+      // Using city, region, and postal code for privacy
       const addr = `${reverseGeocode[0].city}, ${reverseGeocode[0].region}, ${reverseGeocode[0].postalCode}`;
-
-      
       setAddress(addr);
     }
   }
@@ -90,7 +87,7 @@ const getCurrentLocation = async() => {
         {loadingLocation ? 'Getting your location...' : 'Welcome! Your current location:'}
       </Text>
       
-      {/* Reload location */}
+      {/* Refresh location button */}
       <TouchableOpacity 
         style={[styles.locationButton, loadingLocation && styles.locationButtonDisabled]} 
         onPress={getCurrentLocation}
@@ -109,10 +106,10 @@ const getCurrentLocation = async() => {
 
           <Text style={styles.coordinatesTitle}>Coordinates:</Text>
           <Text style={styles.coordinatesText}>
-            Lat: {location.coords.latitude.toFixed(6)}
+            Lat: {location?.coords.latitude.toFixed(6)}
           </Text>
           <Text style={styles.coordinatesText}>
-            Lng: {location.coords.longitude.toFixed(6)}
+            Lng: {location?.coords.longitude.toFixed(6)}
           </Text>
      </>
       ) : loadingLocation ? (

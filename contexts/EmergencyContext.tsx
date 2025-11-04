@@ -17,17 +17,17 @@ export const EmergencyProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       
-      // Verificar si existe la configuración completa
+      // Check if complete configuration exists
       const userEmail = await AsyncStorage.getItem('userEmail');
       const contactEmail = await AsyncStorage.getItem('contactEmail');
       const contactPhone = await AsyncStorage.getItem('contactPhone');
       
-      // La configuración está completa si todos los campos tienen valor
+      // Configuration is complete if all fields have values
       const configurationComplete = !!(userEmail && contactEmail && contactPhone);
       
       setIsConfigured(configurationComplete);
       
-      // Guardar el estado en AsyncStorage para futuras verificaciones
+      // Save the status in AsyncStorage for future verifications
       await AsyncStorage.setItem('isConfigured', configurationComplete.toString());
       
     } catch (error) {
@@ -59,7 +59,7 @@ export const EmergencyProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Hook personalizado para usar el contexto
+// Custom hook to use the context
 export const useEmergencyContext = () => {
   const context = useContext(EmergencyContext);
   if (!context) {
