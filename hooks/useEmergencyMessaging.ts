@@ -2,11 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as MailComposer from 'expo-mail-composer';
 import * as SMS from 'expo-sms';
+import { useRef } from 'react';
 import { Alert } from 'react-native';
 
 // Emergency messaging system for ReactiveAlex - handles email and SMS emergency alerts
 export function useEmergencyMessaging() {
   const isMessagingActive = true; // Always active when user configuration is complete
+  const isProcessingRef = useRef(false); // Prevent multiple simultaneous emergency alerts
 
   const sendEmergencyEmail = async (currentLocation: string) => {
     try {
@@ -174,56 +176,92 @@ Please contact me immediately to verify my safety.
   };
 
   const triggerEmergencyAlert = async () => {
-    try {
-      // Try to get current location
-      let userLocation = 'Location not available';
-      
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const currentPosition = await Location.getCurrentPositionAsync({});
-          const addressInfo = await Location.reverseGeocodeAsync({
-            latitude: currentPosition.coords.latitude,
-            longitude: currentPosition.coords.longitude,
-          });
-          
-          if (addressInfo[0]) {
-            userLocation = `${addressInfo[0].city}, ${addressInfo[0].region}, ${addressInfo[0].country}\nLat: ${currentPosition.coords.latitude.toFixed(6)}, Lng: ${currentPosition.coords.longitude.toFixed(6)}`;
-          }
-        }
-      } catch (error) {
-        console.log('Error getting location for emergency alert:', error);
-      }
+    // Prevent multiple simultaneous emergency alerts
+    if (isProcessingRef.current) {
+      console.log('Emergency alert already in progress, ignoring additional button press');
+      return;
+    }
 
+    try {
+      // Mark as processing to prevent multiple calls
+      isProcessingRef.current = true;
+
+      // Show immediate alert without waiting for location
       Alert.alert(
         'EMERGENCY PANIC BUTTON ACTIVATED',
-        `Do you need emergency help?\n\nCurrent location:\n${userLocation}`,
+        'Do you need emergency help?\n\nPress "YES, I NEED HELP" to continue with emergency alert.',
         [
           { 
             text: 'False Alarm', 
-            style: 'cancel' 
+            style: 'cancel',
+            onPress: () => {
+              // Allow new emergency alerts after cancellation
+              isProcessingRef.current = false;
+            }
           },
           { 
             text: 'YES, I NEED HELP', 
             style: 'destructive',
-            onPress: () => {
+            onPress: async () => {
+              // Show loading alert while getting location
+              Alert.alert(
+                'Getting Your Location',
+                'Please wait while we get your current location for the emergency alert...',
+                [],
+                { cancelable: false }
+              );
+
+              // Now get location in background
+              let userLocation = 'Location not available';
+              
+              try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                  const currentPosition = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Balanced, // Faster than high accuracy
+                    maximumAge: 10000, // Use cached location if less than 10 seconds old
+                    timeout: 8000, // Maximum 8 seconds to get location
+                  });
+                  const addressInfo = await Location.reverseGeocodeAsync({
+                    latitude: currentPosition.coords.latitude,
+                    longitude: currentPosition.coords.longitude,
+                  });
+                  
+                  if (addressInfo[0]) {
+                    userLocation = `${addressInfo[0].city}, ${addressInfo[0].region}, ${addressInfo[0].country}\nLat: ${currentPosition.coords.latitude.toFixed(6)}, Lng: ${currentPosition.coords.longitude.toFixed(6)}`;
+                  }
+                }
+              } catch (error) {
+                console.log('Error getting location for emergency alert:', error);
+                userLocation = 'Could not determine location';
+              }
+
               // Show options for how to send the emergency alert
               Alert.alert(
                 'Choose Emergency Alert Method',
-                'How would you like to send the emergency alert?',
+                `How would you like to send the emergency alert?\n\nYour location: ${userLocation}`,
                 [
                   {
                     text: 'Email Only',
-                    onPress: async () => await sendEmergencyEmail(userLocation)
+                    onPress: async () => {
+                      await sendEmergencyEmail(userLocation);
+                      isProcessingRef.current = false; // Allow new alerts after completion
+                    }
                   },
                   {
                     text: 'SMS Only',
-                    onPress: async () => await sendEmergencySMS(userLocation)
+                    onPress: async () => {
+                      await sendEmergencySMS(userLocation);
+                      isProcessingRef.current = false; // Allow new alerts after completion
+                    }
                   },
                   {
                     text: 'Both Email & SMS',
                     style: 'destructive',
-                    onPress: async () => await sendBothEmergencyMessages(userLocation)
+                    onPress: async () => {
+                      await sendBothEmergencyMessages(userLocation);
+                      isProcessingRef.current = false; // Allow new alerts after completion
+                    }
                   }
                 ],
                 { cancelable: false }
@@ -235,6 +273,8 @@ Please contact me immediately to verify my safety.
       );
     } catch (error) {
       console.log('Error in emergency alert:', error);
+      // Allow new emergency alerts if there was an error
+      isProcessingRef.current = false;
     }
   };
 

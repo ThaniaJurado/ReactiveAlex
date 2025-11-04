@@ -1,3 +1,4 @@
+import { useEmergencyContext } from '@/contexts/EmergencyContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 
 export default function ConfigurationScreen() {
+  const { refreshConfiguration } = useEmergencyContext();
   const [configured, setConfigured] = useState('');
   const [myEmail, setMyEmail] = useState('');
   const [email, setEmail] = useState('');
@@ -54,6 +56,9 @@ export default function ConfigurationScreen() {
         if (email) await AsyncStorage.setItem('contactEmail', email);
         if (phoneNumber) await AsyncStorage.setItem('contactPhone', phoneNumber);
 
+        // Refresh the configuration context after saving
+        await refreshConfiguration();
+
         Alert.alert('Changes successfully saved!', `Data saved to device`);
       } catch (error) {
         Alert.alert('Error', 'Failed to save data');
@@ -79,11 +84,19 @@ export default function ConfigurationScreen() {
               await AsyncStorage.removeItem('contactEmail');
               await AsyncStorage.removeItem('contactPhone');
               await AsyncStorage.removeItem('isConfigured');
+              
+              // Clear local state
+              setMyEmail('');
               setEmail('');
               setPhoneNumber('');
+              
+              // Refresh the configuration context after clearing
+              await refreshConfiguration();
+              
               Alert.alert('Completed', 'All data has been deleted');
             } catch (error) {
               Alert.alert('Error', 'Could not delete the data');
+              console.log('Error clearing data:', error);
             }
           }
         }

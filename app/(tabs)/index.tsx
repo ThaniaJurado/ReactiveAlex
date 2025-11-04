@@ -1,13 +1,13 @@
 
+import { useEmergencyContext } from '@/contexts/EmergencyContext';
 import { useEmergencyMessaging } from '@/hooks/useEmergencyMessaging';
-import { useUserConfiguration } from '@/hooks/useUserConfiguration';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
-  const { isConfigured, isLoading, refreshConfiguration } = useUserConfiguration();
+  const { isConfigured, isLoading, refreshConfiguration } = useEmergencyContext();
   const { isMessagingActive, triggerEmergencyAlert } = useEmergencyMessaging();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [address, setAddress] = useState('');
