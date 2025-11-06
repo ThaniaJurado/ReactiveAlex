@@ -1,74 +1,114 @@
 import { useEmergencyContext } from '@/contexts/EmergencyContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Alert,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
+import * as Yup from 'yup';
+import { styles } from './configuration.styles';
 
-export default function ConfigurationScreen() {
+// Validation schema
+const validationSchema = Yup.object().shape({
+  myEmail: Yup.string()
+    .email('Please enter a valid email')
+    .required('Your email is required'),
+  email: Yup.string()
+    .email('Please enter a valid email')
+    .required('Contact email is required'),
+  phoneNumber: Yup.string()
+    //.matches(/^\(\d{3}\)\s\d{3}\s\d{4}$/, 'Please use the format (XXX) XXX XXXX')
+    .matches(/^\d{10}$/, 'Please use the format XXXXXXXXXX')
+    .required('Contact phone number is required'),
+});
+
+export default function Configuration() {
+  //Hooks for this component
   const { refreshConfiguration } = useEmergencyContext();
-  const [configured, setConfigured] = useState('');
-  const [myEmail, setMyEmail] = useState('');
-  const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
 
-  // Load save data, if any
-  useEffect(() => {
-    loadSavedData();
+  //form data states
+  const [myEmail, setMyEmail] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
+
+  //for form validation
+  const [errors, setErrors] = useState<{myEmail?: string, email?: string, phoneNumber?: string}>({});
+
+  /* LOAD SAVED DATA */
+  const loadSavedData = useCallback(async () => {
+    try {
+      const [savedMyEmail, savedEmail, savedPhoneNumber] = await Promise.all([
+        AsyncStorage.getItem('userEmail'),
+        AsyncStorage.getItem('contactEmail'),
+        AsyncStorage.getItem('contactPhone')
+      ]);
+      
+      setMyEmail(savedMyEmail || '');
+      setEmail(savedEmail || '');
+      setPhoneNumber(savedPhoneNumber || '');
+    } catch (error) {
+      console.error('Error loading saved data:', error);
+    }
   }, []);
 
-  // Refresh data when screen comes into focus
+  // Load saved data when screen is focused
   useFocusEffect(
     useCallback(() => {
       loadSavedData();
-    }, [])
+    }, [loadSavedData])
   );
 
-  const loadSavedData = async () => {
+  /* VALIDATION */
+  const validateForm = async () => {
     try {
-      const alreadyConfigured = await AsyncStorage.getItem('isConfigured');
-      const savedMyEmail = await AsyncStorage.getItem('userEmail');
-      const savedEmail = await AsyncStorage.getItem('contactEmail');
-      const savedPhone = await AsyncStorage.getItem('contactPhone');
-
-      if(alreadyConfigured) setConfigured(alreadyConfigured);
-      if (savedMyEmail) setMyEmail(savedMyEmail);
-      if (savedEmail) setEmail(savedEmail);
-      if (savedPhone) setPhoneNumber(savedPhone);
+      await validationSchema.validate(
+        { myEmail, email, phoneNumber }, 
+        { abortEarly: false } //so it doesn't stop at the first error
+      );
+      setErrors({});
+      return true;
     } catch (error) {
-      console.log('Error loading data:', error);
-    }
-  };
-
-  const handleSave = async () => {
-    if (myEmail && email && phoneNumber) {
-      try {
-        // Save data in AsyncStorage
-        await AsyncStorage.setItem('isConfigured', 'true');
-        if (myEmail) await AsyncStorage.setItem('userEmail', myEmail);
-        if (email) await AsyncStorage.setItem('contactEmail', email);
-        if (phoneNumber) await AsyncStorage.setItem('contactPhone', phoneNumber);
-
-        // Refresh the configuration context after saving
-        await refreshConfiguration();
-
-        Alert.alert('Changes successfully saved!', `Data saved to device`);
-      } catch (error) {
-        Alert.alert('Error', 'Failed to save data');
-        console.log('Error saving data:', error);
+      if (error instanceof Yup.ValidationError) {
+        const validationErrors: {myEmail?: string, email?: string, phoneNumber?: string} = {};
+        error.inner.forEach((err) => {
+          if (err.path) {
+            //destructures the err.message to assign it to the correct field in the errors state
+            validationErrors[err.path as keyof typeof validationErrors] = err.message;
+          }
+        });
+        setErrors(validationErrors);
       }
-    } else {
-      Alert.alert('Error', 'Please complete all fields before saving.');
+      return false;
     }
   };
 
+  /* VALIDATES AND SAVES */
+  const handleSave = async () => {
+    const isValid = await validateForm();
+    if (!isValid) return;
+
+    try {
+      await Promise.all([
+        AsyncStorage.setItem('userEmail', myEmail),
+        AsyncStorage.setItem('contactEmail', email),
+        AsyncStorage.setItem('contactPhone', phoneNumber),
+        AsyncStorage.setItem('isConfigured', 'true')
+      ]);
+      
+      Alert.alert('Success', 'Configuration saved successfully!');
+      refreshConfiguration(); // Refresh the context
+    } catch (error) {
+      console.error('Error saving configuration:', error);
+      Alert.alert('Error', 'Failed to save configuration. Please try again.');
+    }
+  };
+
+  /* CLEARS ALL DATA */
   const clearData = async () => {
     Alert.alert(
       'Clear Data',
@@ -80,23 +120,22 @@ export default function ConfigurationScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem('userEmail');
-              await AsyncStorage.removeItem('contactEmail');
-              await AsyncStorage.removeItem('contactPhone');
-              await AsyncStorage.removeItem('isConfigured');
+              await Promise.all([
+                AsyncStorage.removeItem('userEmail'),
+                AsyncStorage.removeItem('contactEmail'),
+                AsyncStorage.removeItem('contactPhone'),
+                AsyncStorage.removeItem('isConfigured')
+              ]);
               
-              // Clear local state
               setMyEmail('');
               setEmail('');
               setPhoneNumber('');
-              
-              // Refresh the configuration context after clearing
-              await refreshConfiguration();
-              
+              setErrors({});
               Alert.alert('Completed', 'All data has been deleted');
+              refreshConfiguration(); // Refresh the context
             } catch (error) {
-              Alert.alert('Error', 'Could not delete the data');
-              console.log('Error clearing data:', error);
+              console.error('Error clearing configuration:', error);
+              Alert.alert('Error', 'Failed to clear configuration. Please try again.');
             }
           }
         }
@@ -106,20 +145,19 @@ export default function ConfigurationScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>
-        Configuration
-      </Text>
-      
-      <Text style={styles.subtitle}>
-        Update your personal information
-      </Text>
+      <View style={styles.titleContainer}>
+        <Text style={styles.title}>Configuration</Text>
+      </View>
 
-       <View style={styles.formContainer}>
-        {/* User's Email field */}
+      <View style={styles.formContainer}>
+        {/* Your Email */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Your email</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              errors.myEmail && { borderColor: '#FF3B30', borderWidth: 2 }
+            ]}
             value={myEmail}
             onChangeText={setMyEmail}
             placeholder="example@email.com"
@@ -127,41 +165,56 @@ export default function ConfigurationScreen() {
             autoCapitalize="none"
             placeholderTextColor="#999"
           />
+          {errors.myEmail && (
+            <Text style={styles.errorText}>{errors.myEmail}</Text>
+          )}
         </View>
 
-        {/* Contact Email field */}
+        {/* Your contact's email */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Your contact's email</Text>
+          <Text style={styles.label}>Contact email</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              errors.email && { borderColor: '#FF3B30', borderWidth: 2 }
+            ]}
             value={email}
             onChangeText={setEmail}
-            placeholder="example@email.com"
+            placeholder="contact@email.com"
             keyboardType="email-address"
             autoCapitalize="none"
             placeholderTextColor="#999"
           />
+          {errors.email && (
+            <Text style={styles.errorText}>{errors.email}</Text>
+          )}
         </View>
 
-        {/* Contact Phone Number field */}
+        {/* Your contact's cellphone */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Your contact's cellphone number</Text>
+          <Text style={styles.label}>Contact phone number</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              errors.phoneNumber && { borderColor: '#FF3B30', borderWidth: 2 }
+            ]}
             value={phoneNumber}
             onChangeText={setPhoneNumber}
-            placeholder="+52 (656) 567 8900"
+            placeholder="(656) 567 8900"
             keyboardType="phone-pad"
             placeholderTextColor="#999"
           />
+          {errors.phoneNumber && (
+            <Text style={styles.errorText}>{errors.phoneNumber}</Text>
+          )}
         </View>
 
-        {/* Save Button */}
+        {/* Save */}
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Save</Text>
         </TouchableOpacity>
 
-        {/* Clear Data Button */}
+        {/* Clear all */}
         <TouchableOpacity style={styles.clearButton} onPress={clearData}>
           <Text style={styles.clearButtonText}>Clear saved data</Text>
         </TouchableOpacity>
@@ -170,75 +223,4 @@ export default function ConfigurationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  contentContainer: {
-    flexGrow: 1,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 18,
-    textAlign: 'center',
-    marginBottom: 30,
-    fontWeight: '600',
-    color: '#666',
-  },
-  formContainer: {
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#333',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#f9f9f9',
-    color: '#333',
-  },
-  saveButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    padding: 15,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  saveButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  clearButton: {
-    backgroundColor: '#FF3B30',
-    borderRadius: 8,
-    padding: 15,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  clearButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+

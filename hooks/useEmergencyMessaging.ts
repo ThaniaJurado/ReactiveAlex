@@ -5,7 +5,7 @@ import * as SMS from 'expo-sms';
 import { useRef } from 'react';
 import { Alert } from 'react-native';
 
-// Emergency messaging system for ReactiveAlex - handles email and SMS emergency alerts
+
 export function useEmergencyMessaging() {
   const isMessagingActive = true; // Always active when user configuration is complete
   const isProcessingRef = useRef(false); // Prevent multiple simultaneous emergency alerts
@@ -16,8 +16,8 @@ export function useEmergencyMessaging() {
       const isEmailAvailable = await MailComposer.isAvailableAsync();
       if (!isEmailAvailable) {
         Alert.alert(
-          'Email Not Available', 
-          'No email app is configured on this device. Please set up an email account in your device settings.'
+          'Email Not Available',
+          'No email app is available on this phone. Please configure a mail account first'
         );
         return;
       }
@@ -25,18 +25,12 @@ export function useEmergencyMessaging() {
       const userEmail = await AsyncStorage.getItem('userEmail');
       const emergencyContactEmail = await AsyncStorage.getItem('contactEmail');
 
-      console.log('Email configuration check:', {
-        userEmail: userEmail ? 'Set' : 'Not set',
-        emergencyContactEmail: emergencyContactEmail ? 'Set' : 'Not set',
-        mailComposerAvailable: isEmailAvailable
-      });
-
       if (userEmail && emergencyContactEmail) {
         // Create emergency email content
         const emailSubject = 'ReactiveAlex - EMERGENCY ALERT';
         const emailBody = `EMERGENCY ALERT
 
-The ReactiveAlex panic button has been activated.
+Hi! I'm ReactiveAlex App and your friend is in trouble. Please go or call immediately.
 
 Details:
 • User: ${userEmail}
